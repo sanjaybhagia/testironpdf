@@ -10,14 +10,15 @@ variables:
   workingDirectory: '$(System.DefaultWorkingDirectory)/IronPdfDemo'
 
 stages:
-  - stage: Build
-    displayName: Build stage
+  - stage: Build_Deploy
+    displayName: Build and Deploy stage
     jobs:
-    - displayName: Build Stage
+    - job: Build
+      displayName: Build Stage
       variables:
         NUGET_PACKAGES: $(Pipeline.Workspace)/.nuget/packages
       pool:
-        vmImage: windows-latest
+        vmImage: windows-2022
       steps:
         - checkout: self
         - script: dotnet nuget locals global-packages -l
@@ -54,21 +55,15 @@ stages:
             path: $(Build.ArtifactStagingDirectory)
             artifactName: azurefunction
 
-  - stage: Deploy
-    displayName: DEPLOY_SANDPIT
-    dependsOn: Build
-    condition: succeeded()
-    jobs:
-    - displayName: Deploy Stage
-      steps:
+        - download: current
+          artifact: azurefunction
+          displayName: Download artifact
+
         - task: AzureFunctionApp@1
           displayName: Azure functions app deploy
           inputs:
-            azureSubscription: ${{parameters.AZURE_CONNECTION}}
+            azureSubscription: {subscription}
             appType: functionApp
             appName: ironpdfdemo 
             package: $(Pipeline.Workspace)/azurefunction/a.zip
             deploymentMethod: zipDeploy
-            appSettings: >
-              -FUNCTIONS_EXTENSION_VERSION "~4"
-              $(appSettings)
